@@ -1,12 +1,12 @@
 {
-    "name": "nunomaduro/skeleton-php",
-    "description": "A skeleton repository for my packages",
-    "keywords": ["php", "skeleton", "package"],
+    "name": "SvenVanderwegen/dockerizer",
+    "description": "A PHP package to create a Dockerfile for your Laravel project",
+    "keywords": ["php", "docker", "laravel"],
     "license": "MIT",
     "authors": [
         {
-            "name": "Nuno Maduro",
-            "email": "enunomaduro@gmail.com"
+            "name": "Sven Vanderwegen",
+            "email": "sven@vbc.be"
         }
     ],
     "require": {
@@ -22,7 +22,7 @@
     },
     "autoload": {
         "psr-4": {
-            "NunoMaduro\\SkeletonPhp\\": "src/"
+            "SvenVanderwegen\\Dockerizer\\": "src/"
         }
     },
     "autoload-dev": {
