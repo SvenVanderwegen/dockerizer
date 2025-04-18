@@ -1,5 +1,5 @@
 {
-    "name": "SvenVanderwegen/dockerizer",
+    "name": "svenvanderwegen/dockerizer",
     "description": "A PHP package to create a Dockerfile for your Laravel project",
     "keywords": ["php", "docker", "laravel"],
     "license": "MIT",
