@@ -100,11 +100,11 @@ final class DockerizerSetupCommand extends Command
     private function displaySummary(array $config): void
     {
         $this->info('✅ Dockerizer configuration saved successfully!');
-        $this->line('  - Registry: '.$config['registry']);
-        $this->line('  - Repository: '.$config['repository']);
+        $this->line('  - Registry: '.$config['registry']['type']->getDisplayName());
+        $this->line('  - Repository: '.$config['registry']['repository']);
 
-        if (isset($config['custom_url'])) {
-            $this->line('  - Custom URL: '.$config['custom_url']);
+        if (isset($config['registry']['url'])) {
+            $this->line('  - Custom URL: '.$config['registry']['url']);
         }
 
         $this->newLine();
