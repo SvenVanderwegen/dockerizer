@@ -8,7 +8,6 @@ use Illuminate\Console\Command;
 
 final class DockerizerSetupCommand extends Command
 {
-
     protected $signature = 'dockerizer:setup';
 
     protected $description = 'Setup Dockerizer configuration (choose container registry, repository)';
@@ -30,5 +29,4 @@ final class DockerizerSetupCommand extends Command
 
         return Command::SUCCESS;
     }
-
 }
