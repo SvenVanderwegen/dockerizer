@@ -54,5 +54,12 @@
             "@test:types",
             "@test:unit"
         ]
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "SvenVanderwegen\\Dockerizer\\DockerizerServiceProvider"
+            ]
+        }
     }
 }
