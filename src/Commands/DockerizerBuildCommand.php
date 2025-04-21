@@ -7,6 +7,8 @@ namespace SvenVanderwegen\Dockerizer\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
+use SvenVanderwegen\Dockerizer\Services\MySQLDockerService;
+use SvenVanderwegen\Dockerizer\Services\RedisDockerService;
 use Symfony\Component\Yaml\Yaml;
 
 final class DockerizerBuildCommand extends Command
@@ -68,7 +70,6 @@ final class DockerizerBuildCommand extends Command
         $this->generateNginxDockerfile($configDirectory, $force);
         $this->generateEntrypointScript($configDirectory, $force);
         $this->generateNginxConfig($configDirectory, $force);
-        $this->generateGithubWorkflow($gitBranch, $force);
 
         $this->info('✅ Docker configuration successfully generated!');
 
@@ -128,7 +129,7 @@ final class DockerizerBuildCommand extends Command
         }
 
         // Add common extensions if not already detected
-        $commonExtensions = ['pdo', 'pdo_mysql', 'mbstring', 'exif', 'pcntl', 'bcmath', 'gd', 'zip'];
+        $commonExtensions = ['pdo', 'pdo_mysql', 'mbstring', 'exif', 'pcntl', 'bcmath', 'gd'];
 
         foreach ($commonExtensions as $ext) {
             if (! in_array($ext, $extensions)) {
@@ -147,81 +148,55 @@ final class DockerizerBuildCommand extends Command
         $filePath = base_path('docker-compose.yml');
 
         if (! $force && File::exists($filePath)) {
-            $this->line("Skipping <info>docker-compose.yml</info> (already exists, use --force to overwrite)");
+            $this->line('Skipping <info>docker-compose.yml</info> (already exists, use --force to overwrite)');
+
             return;
         }
 
-        // Build docker-compose configuration
-        $dockerCompose = [
-            'version' => '3.8',
-            'services' => [
-                'app' => [
-                    'build' => [
-                        'context' => '.',
-                        'dockerfile' => "$configDirectory/Dockerfile",
-                    ],
-                    'container_name' => '${APP_NAME:-laravel}_app',
-                    'restart' => 'unless-stopped',
-                    'volumes' => [
-                        '.:/var/www/html',
-                        "./$configDirectory/php.ini:/usr/local/etc/php/conf.d/custom.ini",
-                    ],
-                    'networks' => ['laravel'],
-                    'depends_on' => ['db'],
-                ],
-                'nginx' => [
-                    'build' => [
-                        'context' => '.',
-                        'dockerfile' => "$configDirectory/nginx.Dockerfile",
-                    ],
-                    'container_name' => '${APP_NAME:-laravel}_nginx',
-                    'restart' => 'unless-stopped',
-                    'ports' => [
-                        '${APP_PORT:-80}:80',
-                    ],
-                    'volumes' => [
-                        '.:/var/www/html',
-                        "./$configDirectory/nginx.conf:/etc/nginx/conf.d/default.conf",
-                    ],
-                    'networks' => ['laravel'],
-                    'depends_on' => ['app'],
-                ],
-                'db' => [
-                    'image' => 'mysql:8.0',
-                    'container_name' => '${APP_NAME:-laravel}_db',
-                    'restart' => 'unless-stopped',
-                    'ports' => [
-                        '${FORWARD_DB_PORT:-3306}:3306',
-                    ],
-                    'environment' => [
-                        'MYSQL_DATABASE' => '${DB_DATABASE:-laravel}',
-                        'MYSQL_ROOT_PASSWORD' => '${DB_PASSWORD:-secret}',
-                        'MYSQL_PASSWORD' => '${DB_PASSWORD:-secret}',
-                        'MYSQL_USER' => '${DB_USERNAME:-laravel}',
-                    ],
-                    'volumes' => [
-                        'mysql_data:/var/lib/mysql',
-                    ],
-                    'networks' => ['laravel'],
-                ],
-            ],
-            'networks' => [
-                'laravel' => [
-                    'driver' => 'bridge',
-                ],
-            ],
-            'volumes' => [
-                'mysql_data' => [
-                    'driver' => 'local',
-                ],
-            ],
+        $services = [
+            MySQLDockerService::class,
+            RedisDockerService::class
         ];
 
+        $compose = [];
+
+        foreach ($services as $service) {
+            $serviceInstance = new $service();
+            $compose['services'][$serviceInstance->getServiceName()] = $serviceInstance->getService()->toArray();
+        }
+
+        // Iterate through the services and compile networks and volumes
+        $networks = [];
+        $volumes = [];
+
+        foreach ($compose['services'] as $serviceName => $service) {
+            if (isset($service['networks'])) {
+                foreach ($service['networks'] as $network) {
+                    $networks[$network] = [];
+                }
+            }
+
+            if (isset($service['volumes'])) {
+                foreach ($service['volumes'] as $volume) {
+                    // Split the volume name if it contains a colon
+                    if (str_contains($volume, ':')) {
+                        $volume = explode(':', $volume)[0];
+                    }
+
+                    $volumes[$volume] = [];
+                }
+            }
+        }
+
+        // Add networks and volumes to the compose file
+        $compose['networks'] = array_keys($networks);
+        $compose['volumes'] = array_keys($volumes);
+
         // Use Symfony YAML to generate clean output
-        $yamlContent = Yaml::dump($dockerCompose, 6, 2);
+        $yamlContent = Yaml::dump($compose, 6, 2);
 
         File::put($filePath, $yamlContent);
-        $this->line("Generated: <info>docker-compose.yml</info>");
+        $this->line('Generated: <info>docker-compose.yml</info>');
     }
 
     /**
@@ -229,14 +204,15 @@ final class DockerizerBuildCommand extends Command
      */
     private function generateDockerfile(string $configDirectory, array $extensions, bool $force): void
     {
-        $filePath = base_path("$configDirectory/Dockerfile");
+        $filePath = base_path("$configDirectory/app.dockerfile");
 
         if (! $force && File::exists($filePath)) {
             $this->line("Skipping <info>$configDirectory/Dockerfile</info> (already exists, use --force to overwrite)");
+
             return;
         }
 
-        $template = File::get(__DIR__ . '/../../stubs/app.dockerfile.stub');
+        $template = File::get(__DIR__.'/../../stubs/app.dockerfile.stub');
 
         // Build PHP extensions installation commands
         $extensionsCode = '';
@@ -258,7 +234,7 @@ final class DockerizerBuildCommand extends Command
         }
 
         // Replace placeholder with detected extensions
-        $template = str_replace('# [DOCKERIZER_PLACEHOLDER_EXTENSIONS]', trim($extensionsCode), $template);
+        $template = str_replace('# [DOCKERIZER_PLACEHOLDER_EXTENSIONS]', mb_trim($extensionsCode), $template);
 
         File::put($filePath, $template);
         $this->line("Generated: <info>$configDirectory/Dockerfile</info>");
@@ -269,14 +245,15 @@ final class DockerizerBuildCommand extends Command
      */
     private function generateNginxDockerfile(string $configDirectory, bool $force): void
     {
-        $filePath = base_path("$configDirectory/nginx.Dockerfile");
+        $filePath = base_path("$configDirectory/nginx.dockerfile");
 
         if (! $force && File::exists($filePath)) {
-            $this->line("Skipping <info>$configDirectory/nginx.Dockerfile</info> (already exists, use --force to overwrite)");
+            $this->line("Skipping <info>$configDirectory/nginx.dockerfile</info> (already exists, use --force to overwrite)");
+
             return;
         }
 
-        $template = File::get(__DIR__ . '/../../stubs/nginx.dockerfile.stub');
+        $template = File::get(__DIR__.'/../../stubs/nginx.dockerfile.stub');
         $template = str_replace('.dockerizer', $configDirectory, $template);
 
         File::put($filePath, $template);
@@ -292,23 +269,13 @@ final class DockerizerBuildCommand extends Command
 
         if (! $force && File::exists($filePath)) {
             $this->line("Skipping <info>$configDirectory/entrypoint.sh</info> (already exists, use --force to overwrite)");
+
             return;
         }
 
-        $content = <<<'EOT'
-#!/bin/bash
-set -e
+        $template = File::get(__DIR__.'/../../stubs/entrypoint.sh.stub');
 
-# Set correct permissions
-echo "Setting correct permissions..."
-chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
-chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
-
-# Run the PHP-FPM command passed as argument
-exec "$@"
-EOT;
-
-        File::put($filePath, $content);
+        File::put($filePath, $template);
         chmod($filePath, 0755); // Make sure it's executable
         $this->line("Generated: <info>$configDirectory/entrypoint.sh</info>");
     }
@@ -322,84 +289,13 @@ EOT;
 
         if (! $force && File::exists($filePath)) {
             $this->line("Skipping <info>$configDirectory/nginx.conf</info> (already exists, use --force to overwrite)");
+
             return;
         }
 
-        $template = File::get(__DIR__ . '/../../stubs/default.conf.stub');
+        $template = File::get(__DIR__.'/../../stubs/default.conf.stub');
 
         File::put($filePath, $template);
         $this->line("Generated: <info>$configDirectory/nginx.conf</info>");
-    }
-
-    /**
-     * Generate GitHub Actions workflow file.
-     */
-    private function generateGithubWorkflow(string $gitBranch, bool $force): void
-    {
-        $filePath = base_path('.github/workflows/docker-build.yml');
-
-        if (! $force && File::exists($filePath)) {
-            $this->line("Skipping <info>.github/workflows/docker-build.yml</info> (already exists, use --force to overwrite)");
-            return;
-        }
-
-        $content = <<<EOT
-name: Build and Deploy Docker Images
-
-on:
-  push:
-    branches:
-      - $gitBranch
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: \${{ secrets.DOCKER_USERNAME }}
-          password: \${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Extract metadata for app image
-        id: meta-app
-        uses: docker/metadata-action@v5
-        with:
-          images: \${{ secrets.DOCKER_USERNAME }}/app
-
-      - name: Extract metadata for nginx image
-        id: meta-nginx
-        uses: docker/metadata-action@v5
-        with:
-          images: \${{ secrets.DOCKER_USERNAME }}/nginx
-
-      - name: Build and push app image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: .dockerizer/Dockerfile
-          push: true
-          tags: \${{ steps.meta-app.outputs.tags }}
-          labels: \${{ steps.meta-app.outputs.labels }}
-
-      - name: Build and push nginx image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: .dockerizer/nginx.Dockerfile
-          push: true
-          tags: \${{ steps.meta-nginx.outputs.tags }}
-          labels: \${{ steps.meta-nginx.outputs.labels }}
-EOT;
-
-        File::put($filePath, $content);
-        $this->line("Generated: <info>.github/workflows/docker-build.yml</info>");
     }
 }

@@ -28,6 +28,5 @@ final class DockerizerServiceProvider extends BaseServiceProvider
             $this->commands($this->commands);
         }
 
-
     }
 }
