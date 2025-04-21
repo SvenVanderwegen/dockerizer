@@ -27,5 +27,7 @@ final class DockerizerServiceProvider extends BaseServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands($this->commands);
         }
+
+
     }
 }

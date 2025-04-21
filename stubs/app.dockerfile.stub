@@ -7,29 +7,26 @@ FROM composer:2 AS vendor
 
 WORKDIR /var/www/html
 
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --prefer-dist --optimize-autoloader
-
 COPY . .
+
+RUN composer install --no-dev --prefer-dist --optimize-autoloader
 
 # --------------------------------
 # Stage 2 - Node build for frontend assets
 # --------------------------------
-FROM node:20-alpine AS frontend
+FROM node:23-alpine AS frontend
 
 WORKDIR /var/www/html
 
-COPY package.json package-lock.json ./
-RUN npm install --legacy-peer-deps
-
 COPY . .
 
+RUN npm install --legacy-peer-deps
 RUN npm run build
 
 # --------------------------------
 # Stage 3 - PHP-FPM runtime
 # --------------------------------
-FROM php:8.2-fpm-alpine
+FROM php:8.4-fpm-alpine
 
 # Install system dependencies
 RUN apk add --no-cache \
@@ -48,7 +45,14 @@ RUN apk add --no-cache \
     openssh
 
 # Install PHP extensions
-# [DOCKERIZER_PLACEHOLDER_EXTENSIONS]
+RUN docker-php-ext-install pdo
+RUN docker-php-ext-install pdo_mysql
+RUN docker-php-ext-install mbstring
+RUN docker-php-ext-install exif
+RUN docker-php-ext-install pcntl
+RUN docker-php-ext-install bcmath
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp
+RUN docker-php-ext-install -j$(nproc) gd
 
 # Set working directory
 WORKDIR /var/www/html

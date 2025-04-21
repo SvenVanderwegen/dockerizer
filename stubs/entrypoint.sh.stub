@@ -6,14 +6,17 @@ echo "Setting correct permissions..."
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Optional: wait for database to be ready
-if [ "${WAIT_FOR_DB}" = "true" ]; then
-    echo "Waiting for database connection..."
-    until nc -z -v -w30 db 3306; do
-      echo "Waiting for database connection..."
-      sleep 2
-    done
-    echo "Database is up and running!"
+# Make sure database directory and SQLite file are writable
+if [ -d /var/www/html/database/sqlite ]; then
+  chmod -R ug+rw /var/www/html/database/sqlite || true
+  chown -R www-data:www-data /var/www/html/database/sqlite || true
+fi
+
+# (Optional) Create SQLite file if missing
+if [ ! -f /var/www/html/database/sqlite/database.sqlite ]; then
+  touch /var/www/html/database/sqlite/database.sqlite
+  chown www-data:www-data /var/www/html/database/sqlite/database.sqlite
+  chmod 660 /var/www/html/database/sqlite/database.sqlite
 fi
 
 # Run Laravel optimizations for production
