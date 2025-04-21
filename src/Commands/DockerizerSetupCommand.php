@@ -6,14 +6,12 @@ namespace SvenVanderwegen\Dockerizer\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use SvenVanderwegen\Dockerizer\Enums\DatabaseOptions;
 use SvenVanderwegen\Dockerizer\Enums\RegistryOptions;
 
 final class DockerizerSetupCommand extends Command
 {
-
     protected $signature = 'dockerizer:setup';
 
     protected $description = 'Setup Dockerizer configuration (choose container registry, repository)';
@@ -69,7 +67,7 @@ final class DockerizerSetupCommand extends Command
             'database' => [
                 'type' => $database,
                 'username' => 'laravel',
-                'password' => Str::password()
+                'password' => Str::password(),
             ],
             'redis' => [
                 'enabled' => $redis,

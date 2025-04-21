@@ -1,0 +1,67 @@
+# syntax=docker/dockerfile:1
+
+# --------------------------------
+# Stage 1 - Composer dependencies
+# --------------------------------
+FROM composer:2 AS vendor
+
+WORKDIR /var/www/html
+
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --prefer-dist --optimize-autoloader
+
+COPY . .
+
+# --------------------------------
+# Stage 2 - Node build for frontend assets
+# --------------------------------
+FROM node:20-alpine AS frontend
+
+WORKDIR /var/www/html
+
+COPY package.json package-lock.json ./
+RUN npm install --legacy-peer-deps
+
+COPY . .
+
+RUN npm run build
+
+# --------------------------------
+# Stage 3 - PHP-FPM runtime
+# --------------------------------
+FROM php:8.2-fpm-alpine
+
+# Install system dependencies
+RUN apk add --no-cache \
+    bash \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    libwebp-dev \
+    freetype-dev \
+    oniguruma-dev \
+    libxml2-dev \
+    zip \
+    unzip \
+    curl \
+    git \
+    mysql-client \
+    openssh
+
+# Install PHP extensions
+# [DOCKERIZER_PLACEHOLDER_EXTENSIONS]
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy built backend from vendor stage
+COPY --from=vendor /var/www/html /var/www/html
+
+# Copy compiled frontend assets
+COPY --from=frontend /var/www/html/public/ /var/www/html/public/
+
+# Entrypoint script
+COPY .dockerizer/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["php-fpm"]

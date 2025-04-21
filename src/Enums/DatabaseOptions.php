@@ -1,14 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace SvenVanderwegen\Dockerizer\Enums;
 
 enum DatabaseOptions: string
 {
-
     case MYSQL = 'mysql';
     case POSTGRESQL = 'postgresql';
     case SQLITE = 'sqlite';
-
 
     public static function default(): self
     {
@@ -41,5 +41,4 @@ enum DatabaseOptions: string
             self::SQLITE => 'SQLite',
         };
     }
-
 }
