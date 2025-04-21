@@ -63,6 +63,6 @@ enum GeneratedStubFiles: string
 
     private function getStubFolder(): string
     {
-        return __DIR__.'/../stubs/';
+        return __DIR__.'/../../stubs/';
     }
 }
