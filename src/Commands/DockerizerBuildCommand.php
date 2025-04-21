@@ -93,6 +93,7 @@ final class DockerizerBuildCommand extends Command
     private function generateDockerComposeFile(): void
     {
         $filePath = base_path('docker-compose.yml');
+        $config = File::json(base_path(config()->string('dockerizer.directory', '.dockerizer').'/config.json'));
 
         if (! $this->isForced() && File::exists($filePath)) {
             $this->line('Skipping <info>docker-compose.yml</info> (already exists, use --force to overwrite)');

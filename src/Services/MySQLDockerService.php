@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace SvenVanderwegen\Dockerizer\Services;
 
 use SvenVanderwegen\Dockerizer\Contracts\DockerServiceModule;
-use SvenVanderwegen\Dockerizer\Objects\DockerService;
 
 final class MySQLDockerService implements DockerServiceModule
 {
@@ -14,10 +13,15 @@ final class MySQLDockerService implements DockerServiceModule
         return 'db';
     }
 
+    public function getServiceImage(): string
+    {
+        return 'mysql:8.0';
+    }
+
     public function getService(): DockerService
     {
         return new DockerService(
-            image: 'mysql:8.0',
+            image: $this->getServiceImage(),
             restart: 'unless-stopped',
             environment: [
                 'MYSQL_DATABASE' => 'laravel',

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SvenVanderwegen\Dockerizer\Objects;
+namespace SvenVanderwegen\Dockerizer\Services;
 
 final readonly class DockerService
 {

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace SvenVanderwegen\Dockerizer\Services;
 
 use SvenVanderwegen\Dockerizer\Contracts\DockerServiceModule;
-use SvenVanderwegen\Dockerizer\Objects\DockerService;
 
 final class RedisDockerService implements DockerServiceModule
 {
@@ -14,10 +13,15 @@ final class RedisDockerService implements DockerServiceModule
         return 'cache';
     }
 
+    public function getServiceImage(): string
+    {
+        return 'redis:latest';
+    }
+
     public function getService(): DockerService
     {
         return new DockerService(
-            image: 'redis:latest',
+            image: $this->getServiceImage(),
             restart: 'unless-stopped',
             volumes: [
                 'redis_data:/data',
