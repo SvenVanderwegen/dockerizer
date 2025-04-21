@@ -18,7 +18,13 @@ final class DockerizerSetupCommand extends Command
 
     public function handle(): int
     {
-        $this->info('Dockerizer setup command executed.');
+        // Check if the configuration file already exists (dockerizer.php), if not publish it.
+        if (!File::exists(config_path('dockerizer.php'))) {
+            $this->callSilent('vendor:publish', [
+                '--tag' => 'dockerizer-config',
+                '--force' => true,
+            ]);
+        }
 
         $config = $this->collectConfiguration();
         $this->saveConfiguration($config);
@@ -83,29 +89,20 @@ final class DockerizerSetupCommand extends Command
 
     private function saveConfiguration(array $config): void
     {
-        $configPath = base_path(config()->string('dockerizer.config_directory', '.dockerizer'));
+        $configPath = config_path('dockerizer.php');
 
-        if (! File::exists($configPath)) {
-            File::makeDirectory($configPath);
-        }
+        // Load the existing configuration file
+        $existingConfig = File::get($configPath);
 
-        File::put(
-            $configPath.'/config.json',
-            json_encode($config, JSON_PRETTY_PRINT)
+        // Replace the placeholder with the new configuration
+        $newConfig = preg_replace(
+            '/return\s+\[.*?];/s',
+            'return '.var_export($config, true).';',
+            $existingConfig
         );
-    }
 
-    private function displaySummary(array $config): void
-    {
-        $this->info('✅ Dockerizer configuration saved successfully!');
-        $this->line('  - Registry: '.$config['registry']['type']->getDisplayName());
-        $this->line('  - Repository: '.$config['registry']['repository']);
-
-        if (isset($config['registry']['url'])) {
-            $this->line('  - Custom URL: '.$config['registry']['url']);
-        }
-
-        $this->newLine();
+        // Save the updated configuration back to the file
+        File::put($configPath, $newConfig);
     }
 
     private function displayNextSteps(): void

@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace SvenVanderwegen\Dockerizer\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
+use SvenVanderwegen\Dockerizer\Actions\DetectDefaultGitBranchAction;
+use SvenVanderwegen\Dockerizer\Actions\DetectPhpExtensionsAction;
 use SvenVanderwegen\Dockerizer\Services\MySQLDockerService;
 use SvenVanderwegen\Dockerizer\Services\RedisDockerService;
 use Symfony\Component\Yaml\Yaml;
@@ -30,46 +31,31 @@ final class DockerizerBuildCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $this->info('🐳 Dockerizer: Generating Docker configuration files...');
 
-        // Check if config exists
-        if (! Config::has('dockerizer')) {
-            $this->error('Config file "dockerizer.php" is missing or not loaded.');
-
-            return Command::FAILURE;
-        }
-
-        // Check if composer.json exists
-        if (! File::exists(base_path('composer.json'))) {
-            $this->error('composer.json not found in project root.');
-
-            return Command::FAILURE;
-        }
-
-        // Read settings from config
-        $configDirectory = Config::get('dockerizer.config_directory', '.dockerizer');
         $force = $this->option('force');
 
         // Create directory structure
-        $this->createDirectories([
-            base_path($configDirectory),
+        $this->createDirectories(directories: [
+            base_path(config()->string('dockerizer.directory', '.dockerizer')),
             base_path('.github/workflows'),
         ]);
 
         // Get the current Git branch (default to main if not found)
-        $gitBranch = $this->getDefaultGitBranch();
+        $gitBranch = (new DetectDefaultGitBranchAction())();
 
         // Detect PHP extensions from composer.json
-        $phpExtensions = $this->detectPhpExtensions();
+        $phpExtensions = (new DetectPhpExtensionsAction())();
 
-        // Generate all required files
-        $this->generateDockerComposeFile($configDirectory, $force);
+        $configDirectory = config()->string('dockerizer.directory', '.dockerizer');
+
         $this->generateDockerfile($configDirectory, $phpExtensions, $force);
         $this->generateNginxDockerfile($configDirectory, $force);
         $this->generateEntrypointScript($configDirectory, $force);
         $this->generateNginxConfig($configDirectory, $force);
+        $this->generateDockerComposeFile($configDirectory, $force);
 
         $this->info('✅ Docker configuration successfully generated!');
 
@@ -90,57 +76,6 @@ final class DockerizerBuildCommand extends Command
     }
 
     /**
-     * Get the default Git branch (main or master).
-     */
-    private function getDefaultGitBranch(): string
-    {
-        // Try to detect the default branch from the Git repository
-        if (File::exists(base_path('.git'))) {
-            // Check for main branch
-            if (File::exists(base_path('.git/refs/heads/main'))) {
-                return 'main';
-            }
-
-            // Check for master branch
-            if (File::exists(base_path('.git/refs/heads/master'))) {
-                return 'master';
-            }
-        }
-
-        // Default to 'main' if we can't determine
-        return 'main';
-    }
-
-    /**
-     * Detect PHP extensions required from composer.json.
-     */
-    private function detectPhpExtensions(): array
-    {
-        $composerJson = json_decode(File::get(base_path('composer.json')), true);
-        $extensions = [];
-
-        // Look for ext-* requirements in require section
-        if (isset($composerJson['require'])) {
-            foreach ($composerJson['require'] as $requirement => $version) {
-                if (str_starts_with($requirement, 'ext-')) {
-                    $extensions[] = str_replace('ext-', '', $requirement);
-                }
-            }
-        }
-
-        // Add common extensions if not already detected
-        $commonExtensions = ['pdo', 'pdo_mysql', 'mbstring', 'exif', 'pcntl', 'bcmath', 'gd'];
-
-        foreach ($commonExtensions as $ext) {
-            if (! in_array($ext, $extensions)) {
-                $extensions[] = $ext;
-            }
-        }
-
-        return $extensions;
-    }
-
-    /**
      * Generate docker-compose.yml file.
      */
     private function generateDockerComposeFile(string $configDirectory, bool $force): void
@@ -155,7 +90,7 @@ final class DockerizerBuildCommand extends Command
 
         $services = [
             MySQLDockerService::class,
-            RedisDockerService::class
+            RedisDockerService::class,
         ];
 
         $compose = [];

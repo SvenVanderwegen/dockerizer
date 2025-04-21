@@ -28,5 +28,8 @@ final class DockerizerServiceProvider extends BaseServiceProvider
             $this->commands($this->commands);
         }
 
+        $this->publishes([
+            __DIR__.'/../config/dockerizer.php' => config_path('dockerizer.php'),
+        ], 'dockerizer-config');
     }
 }
