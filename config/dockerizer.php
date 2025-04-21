@@ -28,58 +28,33 @@ return [
      */
 
     'php_version' => env('DOCKER_PHP_VERSION', '8.4'),
-    'php_extensions' => ['pdo', 'pdo_mysql', 'mbstring', 'exif', 'pcntl', 'bcmath', 'gd'],
 
     /*
      | --------------------------------------------------------------------------
-     | Registry
+     | CI/CD Configuration
      | --------------------------------------------------------------------------
      |
-     | The container registry to use for the Docker images.
-     | You can change this to any registry you want.
      |
-     | The default value is 'docker.io'.
      */
 
-    'registry' => [
-        'type' => env('DOCKER_REGISTRY_TYPE', 'dockerhub'),
-        'url' => env('DOCKER_REGISTRY_URL', 'docker.io'),
-        'username' => env('DOCKER_REGISTRY_USERNAME'),
-        'password' => env('DOCKER_REGISTRY_PASSWORD'),
-    ],
+    'branch' => env('DOCKER_BRANCH', 'main'),
 
     /*
      | --------------------------------------------------------------------------
-     | Database
+     | Dockerfile configuration
      | --------------------------------------------------------------------------
      |
-     | The database to use for the Docker images.
-     | You can change this to any database you want.
-     |
-     | The default value is 'mysql'.
-     */
-
-    'database' => [
-        'type' => env('DOCKER_DATABASE_TYPE', 'mysql'),
-        'username' => env('DOCKER_DATABASE_USERNAME', 'laravel'),
-        'password' => env('DOCKER_DATABASE_PASSWORD', 'secret'),
-        'host' => env('DOCKER_DATABASE_HOST', 'db'),
-        'port' => env('DOCKER_DATABASE_PORT', 3306),
-        'database' => env('DOCKER_DATABASE_NAME', 'laravel'),
-    ],
-
-    /*
-     | --------------------------------------------------------------------------
-     | Service
-     | --------------------------------------------------------------------------
-     |
-     | Extra services to enable for the Docker images.
      |
      */
 
-    'services' => [
-        SvenVanderwegen\Dockerizer\Services\RedisDockerService::class => true,
-        SvenVanderwegen\Dockerizer\Services\QueueWorkerDockerService::class => true,
+    'app' => [
+        'dockerfile' => 'app/Dockerfile',
+        'stub' => 'app.dockerfile.stub',
+        'entrypoint' => 'app/entrypoint.sh',
     ],
 
+    'nginx' => [
+        'dockerfile' => 'nginx/Dockerfile',
+        'stub' => 'nginx.dockerfile.stub',
+    ],
 ];

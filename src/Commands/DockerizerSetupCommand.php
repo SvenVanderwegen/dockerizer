@@ -18,33 +18,25 @@ final class DockerizerSetupCommand extends Command
 
     public function handle(): int
     {
-        // Check if the configuration file already exists (dockerizer.php), if not publish it.
-        if (!File::exists(config_path('dockerizer.php'))) {
-            $this->callSilent('vendor:publish', [
-                '--tag' => 'dockerizer-config',
-                '--force' => true,
-            ]);
-        }
+        $this->info('Dockerizer setup command executed.');
 
         $config = $this->collectConfiguration();
         $this->saveConfiguration($config);
-        $this->displaySummary($config);
-        $this->displayNextSteps();
 
         return Command::SUCCESS;
     }
 
     private function collectConfiguration(): array
     {
-        $registry = RegistryOptions::from($this->choice(
+        $registry = $this->choice(
             'Which container registry do you want to use?',
             RegistryOptions::choises(),
             RegistryOptions::default()->value
-        ));
+        );
 
         $repository = $this->ask('Enter your repository path (e.g., myusername/myapp)');
 
-        if ($registry->isCustom()) {
+        if (RegistryOptions::isCustom($registry)) {
             $customRegistryUrl = $this->ask('Enter your full registry URL (e.g., registry.example.com)');
         }
 
@@ -59,7 +51,7 @@ final class DockerizerSetupCommand extends Command
             true
         );
 
-        $queues = $this->confirm(
+        $worker = $this->confirm(
             'Do you want to add a queue worker?',
             true
         );
@@ -75,40 +67,24 @@ final class DockerizerSetupCommand extends Command
                 'username' => 'laravel',
                 'password' => Str::password(),
             ],
-            'redis' => [
-                'enabled' => $redis,
-                'password' => Str::password(),
-            ],
-            'queues' => [
-                'enabled' => $queues,
-                'connection' => 'redis',
-                'queue' => 'default',
+            'services' => [
+                'redis' => $redis,
+                'workers' => $worker,
             ],
         ];
     }
 
     private function saveConfiguration(array $config): void
     {
-        $configPath = config_path('dockerizer.php');
+        $configPath = base_path(config()->string('dockerizer.directory', '.dockerizer'));
 
-        // Load the existing configuration file
-        $existingConfig = File::get($configPath);
+        if (! File::exists($configPath)) {
+            File::makeDirectory($configPath);
+        }
 
-        // Replace the placeholder with the new configuration
-        $newConfig = preg_replace(
-            '/return\s+\[.*?];/s',
-            'return '.var_export($config, true).';',
-            $existingConfig
+        File::put(
+            $configPath.'/config.json',
+            json_encode($config, JSON_PRETTY_PRINT)
         );
-
-        // Save the updated configuration back to the file
-        File::put($configPath, $newConfig);
-    }
-
-    private function displayNextSteps(): void
-    {
-        $this->info('Next steps:');
-        $this->line('👉 Use this config for your CI/CD pipelines to push Docker images.');
-        $this->line('👉 Your production docker-compose can now pull images cleanly.');
     }
 }

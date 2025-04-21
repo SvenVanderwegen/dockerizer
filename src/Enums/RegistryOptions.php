@@ -34,6 +34,13 @@ enum RegistryOptions: string
         return $options;
     }
 
+    public static function isCustom($value): bool
+    {
+        $instance = self::tryFrom($value);
+
+        return $instance === self::CUSTOM;
+    }
+
     public function getDisplayName(): string
     {
         return match ($this) {
@@ -42,10 +49,5 @@ enum RegistryOptions: string
             self::GITLAB => 'GitLab Container Registry',
             self::CUSTOM => 'Custom/private registry',
         };
-    }
-
-    public function isCustom(): bool
-    {
-        return $this === self::CUSTOM;
     }
 }

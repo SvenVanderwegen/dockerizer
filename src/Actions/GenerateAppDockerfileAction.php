@@ -8,7 +8,7 @@ use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Facades\File;
 use SvenVanderwegen\Dockerizer\Exceptions\FileAlreadyExistsException;
 
-final class GenerateDockerfileAction
+final class GenerateAppDockerfileAction
 {
     /**
      * Generate a Dockerfile for the application.
@@ -19,9 +19,7 @@ final class GenerateDockerfileAction
      */
     public function handle(string $path, bool $force = false, array $extensions = []): void
     {
-        $filePath = base_path("$path/app.dockerfile");
-
-        if (! $force && File::exists($filePath)) {
+        if (! $force && File::exists($path)) {
             throw new FileAlreadyExistsException($path);
         }
 
@@ -45,6 +43,6 @@ final class GenerateDockerfileAction
 
         $template = str_replace('# [DOCKERIZER_PLACEHOLDER_EXTENSIONS]', mb_trim(implode("\n", $commands)), $template);
 
-        File::put($filePath, $template);
+        File::put($path, $template);
     }
 }

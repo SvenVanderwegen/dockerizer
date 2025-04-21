@@ -5,9 +5,14 @@ declare(strict_types=1);
 namespace SvenVanderwegen\Dockerizer\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Facades\File;
 use SvenVanderwegen\Dockerizer\Actions\DetectDefaultGitBranchAction;
 use SvenVanderwegen\Dockerizer\Actions\DetectPhpExtensionsAction;
+use SvenVanderwegen\Dockerizer\Actions\GenerateAppDockerfileAction;
+use SvenVanderwegen\Dockerizer\Actions\GenerateFileFromStubAction;
+use SvenVanderwegen\Dockerizer\Enums\GeneratedStubFiles;
+use SvenVanderwegen\Dockerizer\Exceptions\FileAlreadyExistsException;
 use SvenVanderwegen\Dockerizer\Services\MySQLDockerService;
 use SvenVanderwegen\Dockerizer\Services\RedisDockerService;
 use Symfony\Component\Yaml\Yaml;
@@ -35,35 +40,45 @@ final class DockerizerBuildCommand extends Command
     {
         $this->info('🐳 Dockerizer: Generating Docker configuration files...');
 
-        $force = $this->option('force');
-
         // Create directory structure
         $this->createDirectories(directories: [
             base_path(config()->string('dockerizer.directory', '.dockerizer')),
             base_path('.github/workflows'),
         ]);
 
-        // Get the current Git branch (default to main if not found)
-        $gitBranch = (new DetectDefaultGitBranchAction())();
+        foreach (GeneratedStubFiles::cases() as $file) {
+            try {
+                (new GenerateFileFromStubAction)->handle(
+                    path: $this->getPath($file->getDestinationPath()),
+                    stubName: $file->getStubFilePath(),
+                    force: $this->isForced(),
+                    contentProcessor: $file->getContentProcessor());
+            } catch (FileNotFoundException|FileAlreadyExistsException $e) {
+                $this->error('Failed to generate Dockerfile: '.$e->getMessage());;
+            }
+        }
 
-        // Detect PHP extensions from composer.json
-        $phpExtensions = (new DetectPhpExtensionsAction())();
-
-        $configDirectory = config()->string('dockerizer.directory', '.dockerizer');
-
-        $this->generateDockerfile($configDirectory, $phpExtensions, $force);
-        $this->generateNginxDockerfile($configDirectory, $force);
-        $this->generateEntrypointScript($configDirectory, $force);
-        $this->generateNginxConfig($configDirectory, $force);
-        $this->generateDockerComposeFile($configDirectory, $force);
+        //$this->generateDockerComposeFile($configDirectory, $force);
 
         $this->info('✅ Docker configuration successfully generated!');
 
         return Command::SUCCESS;
     }
 
+    protected function isForced(): bool
+    {
+        return (bool) $this->option('force');
+    }
+
+    protected function getPath(string $path): string
+    {
+        return base_path(config()->string('dockerizer.directory', '.dockerizer')."/$path");
+    }
+
     /**
-     * Create necessary directories if they don't exist.
+     * Create the necessary directories if they don't exist.
+     *
+     * @param array<string> $directories
      */
     private function createDirectories(array $directories): void
     {
@@ -132,105 +147,5 @@ final class DockerizerBuildCommand extends Command
 
         File::put($filePath, $yamlContent);
         $this->line('Generated: <info>docker-compose.yml</info>');
-    }
-
-    /**
-     * Generate Dockerfile for the Laravel app.
-     */
-    private function generateDockerfile(string $configDirectory, array $extensions, bool $force): void
-    {
-        $filePath = base_path("$configDirectory/app.dockerfile");
-
-        if (! $force && File::exists($filePath)) {
-            $this->line("Skipping <info>$configDirectory/Dockerfile</info> (already exists, use --force to overwrite)");
-
-            return;
-        }
-
-        $template = File::get(__DIR__.'/../../stubs/app.dockerfile.stub');
-
-        // Build PHP extensions installation commands
-        $extensionsCode = '';
-        foreach ($extensions as $extension) {
-            switch ($extension) {
-                case 'pdo_mysql':
-                    $extensionsCode .= "RUN docker-php-ext-install pdo_mysql\n";
-                    break;
-                case 'gd':
-                    $extensionsCode .= "RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp\n";
-                    $extensionsCode .= "RUN docker-php-ext-install -j$(nproc) gd\n";
-                    break;
-                case 'zip':
-                    $extensionsCode .= "RUN docker-php-ext-install zip\n";
-                    break;
-                default:
-                    $extensionsCode .= "RUN docker-php-ext-install $extension\n";
-            }
-        }
-
-        // Replace placeholder with detected extensions
-        $template = str_replace('# [DOCKERIZER_PLACEHOLDER_EXTENSIONS]', mb_trim($extensionsCode), $template);
-
-        File::put($filePath, $template);
-        $this->line("Generated: <info>$configDirectory/Dockerfile</info>");
-    }
-
-    /**
-     * Generate Nginx Dockerfile.
-     */
-    private function generateNginxDockerfile(string $configDirectory, bool $force): void
-    {
-        $filePath = base_path("$configDirectory/nginx.dockerfile");
-
-        if (! $force && File::exists($filePath)) {
-            $this->line("Skipping <info>$configDirectory/nginx.dockerfile</info> (already exists, use --force to overwrite)");
-
-            return;
-        }
-
-        $template = File::get(__DIR__.'/../../stubs/nginx.dockerfile.stub');
-        $template = str_replace('.dockerizer', $configDirectory, $template);
-
-        File::put($filePath, $template);
-        $this->line("Generated: <info>$configDirectory/nginx.Dockerfile</info>");
-    }
-
-    /**
-     * Generate entrypoint.sh script.
-     */
-    private function generateEntrypointScript(string $configDirectory, bool $force): void
-    {
-        $filePath = base_path("$configDirectory/entrypoint.sh");
-
-        if (! $force && File::exists($filePath)) {
-            $this->line("Skipping <info>$configDirectory/entrypoint.sh</info> (already exists, use --force to overwrite)");
-
-            return;
-        }
-
-        $template = File::get(__DIR__.'/../../stubs/entrypoint.sh.stub');
-
-        File::put($filePath, $template);
-        chmod($filePath, 0755); // Make sure it's executable
-        $this->line("Generated: <info>$configDirectory/entrypoint.sh</info>");
-    }
-
-    /**
-     * Generate Nginx configuration file.
-     */
-    private function generateNginxConfig(string $configDirectory, bool $force): void
-    {
-        $filePath = base_path("$configDirectory/nginx.conf");
-
-        if (! $force && File::exists($filePath)) {
-            $this->line("Skipping <info>$configDirectory/nginx.conf</info> (already exists, use --force to overwrite)");
-
-            return;
-        }
-
-        $template = File::get(__DIR__.'/../../stubs/default.conf.stub');
-
-        File::put($filePath, $template);
-        $this->line("Generated: <info>$configDirectory/nginx.conf</info>");
     }
 }
