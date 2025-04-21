@@ -19,6 +19,7 @@ final class DockerizerServiceProvider extends BaseServiceProvider
      */
     private array $commands = [
         Commands\DockerizerSetupCommand::class,
+        Commands\DockerizerBuildCommand::class,
     ];
 
     public function register(): void
