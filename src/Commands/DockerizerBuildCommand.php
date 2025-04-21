@@ -55,7 +55,7 @@ final class DockerizerBuildCommand extends Command
             }
         }
 
-        // $this->generateDockerComposeFile($configDirectory, $force);
+        $this->generateDockerComposeFile();
 
         $this->info('✅ Docker configuration successfully generated!');
 
@@ -90,11 +90,11 @@ final class DockerizerBuildCommand extends Command
     /**
      * Generate docker-compose.yml file.
      */
-    private function generateDockerComposeFile(bool $force): void
+    private function generateDockerComposeFile(): void
     {
         $filePath = base_path('docker-compose.yml');
 
-        if (! $force && File::exists($filePath)) {
+        if (! $this->isForced() && File::exists($filePath)) {
             $this->line('Skipping <info>docker-compose.yml</info> (already exists, use --force to overwrite)');
 
             return;

@@ -29,7 +29,7 @@ final class GenerateFileFromStubAction
 
         $template = File::get($stubPath);
 
-        if ($contentProcessor instanceof \Closure) {
+        if ($contentProcessor instanceof Closure) {
             $template = $contentProcessor($template);
         }
 
