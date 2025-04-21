@@ -136,8 +136,8 @@ final class DockerizerBuildCommand extends Command
         }
 
         // Add networks and volumes to the compose file
-        $compose['networks'] = array_keys($networks);
-        $compose['volumes'] = array_keys($volumes);
+        $compose['networks'] = $networks;
+        $compose['volumes'] = $volumes;
 
         // Use Symfony YAML to generate clean output
         $yamlContent = Yaml::dump($compose, 6, 2);
