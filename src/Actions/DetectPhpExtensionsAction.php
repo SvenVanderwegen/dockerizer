@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace SvenVanderwegen\Dockerizer\Actions;
 
+use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Facades\File;
 
 final class DetectPhpExtensionsAction
 {
     /**
      * Detect PHP extensions required from composer.json.
+     * @throws FileNotFoundException
+     *
+     * @return array<string>
      */
     public function __invoke(): array
     {
@@ -18,8 +22,22 @@ final class DetectPhpExtensionsAction
             return [];
         }
 
-        $composerJson = json_decode(File::get($composerJsonPath), true);
-        $extensions = [];
+        $composerJson = File::json($composerJsonPath);
+        $extensions = [
+            'ctype',
+            'curl',
+            'dom',
+            'fileinfo',
+            'filter',
+            'hash',
+            'mbstring',
+            'openssl',
+            'pcre',
+            'pdo',
+            'session',
+            'tokenizer',
+            'xml'
+        ];
 
         if (isset($composerJson['require'])) {
             foreach ($composerJson['require'] as $requirement => $version) {
@@ -29,6 +47,6 @@ final class DetectPhpExtensionsAction
             }
         }
 
-        return $extensions;
+        return array_filter($extensions);
     }
 }

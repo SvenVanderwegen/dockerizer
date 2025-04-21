@@ -49,12 +49,11 @@ return [
 
     'app' => [
         'dockerfile' => 'app/Dockerfile',
-        'stub' => 'app.dockerfile.stub',
         'entrypoint' => 'app/entrypoint.sh',
     ],
 
     'nginx' => [
         'dockerfile' => 'nginx/Dockerfile',
-        'stub' => 'nginx.dockerfile.stub',
+        'config' => 'nginx/default.conf',
     ],
 ];

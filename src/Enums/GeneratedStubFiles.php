@@ -53,6 +53,9 @@ enum GeneratedStubFiles: string
                     }
                 }
 
+                $phpVersion = config()->string('dockerizer.php.version', '8.4');
+                $content = str_replace("php:8.4-fpm-alpine", "php:$phpVersion-fpm-alpine", $content);
+
                 return str_replace('# [DOCKERIZER_PLACEHOLDER_EXTENSIONS]', mb_trim(implode("\n", $commands)), $content);
             },
             self::APP_ENTRYPOINT => null,
