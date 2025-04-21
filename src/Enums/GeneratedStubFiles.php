@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace SvenVanderwegen\Dockerizer\Enums;
 
 use Closure;
@@ -15,10 +17,10 @@ enum GeneratedStubFiles: string
     public function getStubFilePath(): string
     {
         return match ($this) {
-            self::APP_DOCKERFILE => $this->getStubFolder() . 'app.dockerfile.stub',
-            self::APP_ENTRYPOINT => $this->getStubFolder() . 'app.entrypoint.stub',
-            self::NGINX_DOCKERFILE => $this->getStubFolder() . 'nginx.dockerfile.stub',
-            self::NGINX_CONFIG => $this->getStubFolder() . 'nginx.default.stub',
+            self::APP_DOCKERFILE => $this->getStubFolder().'app.dockerfile.stub',
+            self::APP_ENTRYPOINT => $this->getStubFolder().'app.entrypoint.stub',
+            self::NGINX_DOCKERFILE => $this->getStubFolder().'nginx.dockerfile.stub',
+            self::NGINX_CONFIG => $this->getStubFolder().'nginx.default.stub',
         };
     }
 
@@ -35,7 +37,7 @@ enum GeneratedStubFiles: string
     public function getContentProcessor(): ?Closure
     {
         return match ($this) {
-            self::APP_DOCKERFILE => function (string $content) {
+            self::APP_DOCKERFILE => function (string $content): string|array {
                 $commands = [];
                 $extensions = (new DetectPhpExtensionsAction())();
 
@@ -54,7 +56,7 @@ enum GeneratedStubFiles: string
                 }
 
                 $phpVersion = config()->string('dockerizer.php.version', '8.4');
-                $content = str_replace("php:8.4-fpm-alpine", "php:$phpVersion-fpm-alpine", $content);
+                $content = str_replace('php:8.4-fpm-alpine', "php:$phpVersion-fpm-alpine", $content);
 
                 return str_replace('# [DOCKERIZER_PLACEHOLDER_EXTENSIONS]', mb_trim(implode("\n", $commands)), $content);
             },

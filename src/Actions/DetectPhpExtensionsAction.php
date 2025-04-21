@@ -11,9 +11,10 @@ final class DetectPhpExtensionsAction
 {
     /**
      * Detect PHP extensions required from composer.json.
-     * @throws FileNotFoundException
      *
      * @return array<string>
+     *
+     * @throws FileNotFoundException
      */
     public function __invoke(): array
     {
@@ -36,12 +37,12 @@ final class DetectPhpExtensionsAction
             'pdo',
             'session',
             'tokenizer',
-            'xml'
+            'xml',
         ];
 
         if (isset($composerJson['require'])) {
             foreach ($composerJson['require'] as $requirement => $version) {
-                if (str_starts_with($requirement, 'ext-')) {
+                if (str_starts_with((string) $requirement, 'ext-')) {
                     $extensions[] = str_replace('ext-', '', $requirement);
                 }
             }

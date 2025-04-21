@@ -7,9 +7,6 @@ namespace SvenVanderwegen\Dockerizer\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Facades\File;
-use SvenVanderwegen\Dockerizer\Actions\DetectDefaultGitBranchAction;
-use SvenVanderwegen\Dockerizer\Actions\DetectPhpExtensionsAction;
-use SvenVanderwegen\Dockerizer\Actions\GenerateAppDockerfileAction;
 use SvenVanderwegen\Dockerizer\Actions\GenerateFileFromStubAction;
 use SvenVanderwegen\Dockerizer\Enums\GeneratedStubFiles;
 use SvenVanderwegen\Dockerizer\Exceptions\FileAlreadyExistsException;
@@ -54,23 +51,23 @@ final class DockerizerBuildCommand extends Command
                     force: $this->isForced(),
                     contentProcessor: $file->getContentProcessor());
             } catch (FileNotFoundException|FileAlreadyExistsException $e) {
-                $this->error('Failed to generate Dockerfile: '.$e->getMessage());;
+                $this->error('Failed to generate Dockerfile: '.$e->getMessage());
             }
         }
 
-        //$this->generateDockerComposeFile($configDirectory, $force);
+        // $this->generateDockerComposeFile($configDirectory, $force);
 
         $this->info('✅ Docker configuration successfully generated!');
 
         return Command::SUCCESS;
     }
 
-    protected function isForced(): bool
+    private function isForced(): bool
     {
         return (bool) $this->option('force');
     }
 
-    protected function getPath(string $path): string
+    private function getPath(string $path): string
     {
         return base_path(config()->string('dockerizer.directory', '.dockerizer')."/$path");
     }
@@ -78,7 +75,7 @@ final class DockerizerBuildCommand extends Command
     /**
      * Create the necessary directories if they don't exist.
      *
-     * @param array<string> $directories
+     * @param  array<string>  $directories
      */
     private function createDirectories(array $directories): void
     {
@@ -93,7 +90,7 @@ final class DockerizerBuildCommand extends Command
     /**
      * Generate docker-compose.yml file.
      */
-    private function generateDockerComposeFile(string $configDirectory, bool $force): void
+    private function generateDockerComposeFile(bool $force): void
     {
         $filePath = base_path('docker-compose.yml');
 
@@ -119,7 +116,7 @@ final class DockerizerBuildCommand extends Command
         $networks = [];
         $volumes = [];
 
-        foreach ($compose['services'] as $serviceName => $service) {
+        foreach ($compose['services'] as $service) {
             if (isset($service['networks'])) {
                 foreach ($service['networks'] as $network) {
                     $networks[$network] = [];
@@ -129,8 +126,8 @@ final class DockerizerBuildCommand extends Command
             if (isset($service['volumes'])) {
                 foreach ($service['volumes'] as $volume) {
                     // Split the volume name if it contains a colon
-                    if (str_contains($volume, ':')) {
-                        $volume = explode(':', $volume)[0];
+                    if (str_contains((string) $volume, ':')) {
+                        $volume = explode(':', (string) $volume)[0];
                     }
 
                     $volumes[$volume] = [];
