@@ -50,7 +50,7 @@ final class DockerizerBuildCommand extends Command
             try {
                 (new GenerateFileFromStubAction)->handle(
                     path: $this->getPath($file->getDestinationPath()),
-                    stubName: $file->getStubFilePath(),
+                    stubPath: $file->getStubFilePath(),
                     force: $this->isForced(),
                     contentProcessor: $file->getContentProcessor());
             } catch (FileNotFoundException|FileAlreadyExistsException $e) {
