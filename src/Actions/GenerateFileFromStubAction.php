@@ -33,6 +33,11 @@ final class GenerateFileFromStubAction
             $template = $contentProcessor($template);
         }
 
+        $directory = dirname($path);
+        if (! File::exists($directory)) {
+            File::makeDirectory($directory, recursive: true);
+        }
+
         File::put($path, $template);
     }
 }
