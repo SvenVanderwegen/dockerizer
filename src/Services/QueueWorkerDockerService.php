@@ -8,10 +8,6 @@ use SvenVanderwegen\Dockerizer\Contracts\DockerServiceModule;
 
 final readonly class QueueWorkerDockerService implements DockerServiceModule
 {
-    public function __construct(
-        private AppDockerService $appDockerService,
-    ) {}
-
     public function getServiceName(): string
     {
         return 'worker';
@@ -19,7 +15,7 @@ final readonly class QueueWorkerDockerService implements DockerServiceModule
 
     public function getServiceImage(): string
     {
-        return $this->appDockerService->getServiceImage();
+        return (new AppDockerService)->getServiceImage();
     }
 
     public function getService(): DockerService
