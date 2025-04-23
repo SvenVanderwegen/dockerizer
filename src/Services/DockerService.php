@@ -6,6 +6,14 @@ namespace SvenVanderwegen\Dockerizer\Services;
 
 final readonly class DockerService
 {
+    /**
+     * @param  array<string>|null  $build
+     * @param  array<string>|null  $environment
+     * @param  array<string>|null  $volumes
+     * @param  array<string>|null  $depends_on
+     * @param  array<string>|null  $networks
+     * @param  array<string>|null  $ports
+     */
     public function __construct(
         public ?string $image = null,
         public ?array $build = null,
@@ -19,6 +27,11 @@ final readonly class DockerService
         public ?array $ports = null,
     ) {}
 
+    /**
+     * Convert the Docker service to an array.
+     *
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return array_filter([

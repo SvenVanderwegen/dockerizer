@@ -37,7 +37,7 @@ enum GeneratedStubFiles: string
     public function getContentProcessor(): ?Closure
     {
         return match ($this) {
-            self::APP_DOCKERFILE => function (string $content): string|array {
+            self::APP_DOCKERFILE => function (string $content): string {
                 $commands = [];
                 $extensions = (new DetectPhpExtensionsAction())();
 

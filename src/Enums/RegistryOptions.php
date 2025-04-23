@@ -21,7 +21,7 @@ enum RegistryOptions: string
      *
      * @return array<string, string>
      */
-    public static function choises(): array
+    public static function choices(): array
     {
         $cases = self::cases();
 
@@ -34,7 +34,7 @@ enum RegistryOptions: string
         return $options;
     }
 
-    public static function isCustom($value): bool
+    public static function isCustom(string $value): bool
     {
         $instance = self::tryFrom($value);
 

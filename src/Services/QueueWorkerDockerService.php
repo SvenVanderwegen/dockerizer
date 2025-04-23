@@ -24,11 +24,8 @@ final class QueueWorkerDockerService implements DockerServiceModule
     public function getService(): DockerService
     {
         return new DockerService(
-            image: 'redis:latest',
+            image: $this->getServiceImage(),
             restart: 'unless-stopped',
-            volumes: [
-                'redis_data:/data',
-            ],
             networks: [
                 'internal',
             ],

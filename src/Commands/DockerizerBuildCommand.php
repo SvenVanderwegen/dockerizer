@@ -8,9 +8,11 @@ use Illuminate\Console\Command;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Facades\File;
 use SvenVanderwegen\Dockerizer\Actions\GenerateFileFromStubAction;
+use SvenVanderwegen\Dockerizer\Contracts\DockerServiceModule;
+use SvenVanderwegen\Dockerizer\Enums\DatabaseOptions;
 use SvenVanderwegen\Dockerizer\Enums\GeneratedStubFiles;
 use SvenVanderwegen\Dockerizer\Exceptions\FileAlreadyExistsException;
-use SvenVanderwegen\Dockerizer\Services\MySQLDockerService;
+use SvenVanderwegen\Dockerizer\Services\QueueWorkerDockerService;
 use SvenVanderwegen\Dockerizer\Services\RedisDockerService;
 use Symfony\Component\Yaml\Yaml;
 
@@ -95,20 +97,22 @@ final class DockerizerBuildCommand extends Command
         $filePath = base_path('docker-compose.yml');
         $config = File::json(base_path(config()->string('dockerizer.directory', '.dockerizer').'/config.json'));
 
-        if (! $this->isForced() && File::exists($filePath)) {
-            $this->line('Skipping <info>docker-compose.yml</info> (already exists, use --force to overwrite)');
+        $services = [];
 
-            return;
+        $services[] = DatabaseOptions::from($config['database']['type'])->getDockerService();
+
+        if ($config['services']['redis']) {
+            $services[] = RedisDockerService::class;
         }
 
-        $services = [
-            MySQLDockerService::class,
-            RedisDockerService::class,
-        ];
+        if ($config['services']['workers']) {
+            $services[] = QueueWorkerDockerService::class;
+        }
 
         $compose = [];
 
         foreach ($services as $service) {
+            /* @var DockerServiceModule $serviceInstance */
             $serviceInstance = new $service();
             $compose['services'][$serviceInstance->getServiceName()] = $serviceInstance->getService()->toArray();
         }

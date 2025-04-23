@@ -26,13 +26,24 @@ final class DockerizerSetupCommand extends Command
         return Command::SUCCESS;
     }
 
+    /**
+     * Collect configuration from user input.
+     *
+     * @return array<string, mixed>
+     */
     private function collectConfiguration(): array
     {
         $registry = $this->choice(
             'Which container registry do you want to use?',
-            RegistryOptions::choises(),
+            RegistryOptions::choices(),
             RegistryOptions::default()->value
         );
+
+        if (is_array($registry)) {
+            $this->error('Invalid registry option selected.');
+
+            return [];
+        }
 
         $repository = $this->ask('Enter your repository path (e.g., myusername/myapp)');
 
@@ -42,7 +53,7 @@ final class DockerizerSetupCommand extends Command
 
         $database = $this->choice(
             'Which database do you want to use?',
-            DatabaseOptions::choises(),
+            DatabaseOptions::choices(),
             DatabaseOptions::default()->value
         );
 
@@ -74,6 +85,11 @@ final class DockerizerSetupCommand extends Command
         ];
     }
 
+    /**
+     * Save the configuration to a JSON file.
+     *
+     * @param  array<string, mixed>  $config
+     */
     private function saveConfiguration(array $config): void
     {
         $configPath = base_path(config()->string('dockerizer.directory', '.dockerizer'));
@@ -82,9 +98,17 @@ final class DockerizerSetupCommand extends Command
             File::makeDirectory($configPath);
         }
 
+        $content = json_encode($config, JSON_PRETTY_PRINT);
+
+        if ($content === false) {
+            $this->error('Failed to encode configuration to JSON.');
+
+            return;
+        }
+
         File::put(
             $configPath.'/config.json',
-            json_encode($config, JSON_PRETTY_PRINT)
+            $content
         );
     }
 }
