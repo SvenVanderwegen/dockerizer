@@ -6,7 +6,7 @@ namespace SvenVanderwegen\Dockerizer\Services;
 
 use SvenVanderwegen\Dockerizer\Contracts\DockerServiceModule;
 
-final readonly class QueueWorkerDockerService implements DockerServiceModule
+final readonly class SchedulerDockerService implements DockerServiceModule
 {
     public function __construct(
         private AppDockerService $appDockerService,
@@ -14,7 +14,7 @@ final readonly class QueueWorkerDockerService implements DockerServiceModule
 
     public function getServiceName(): string
     {
-        return 'worker';
+        return 'scheduler';
     }
 
     public function getServiceImage(): string
@@ -26,10 +26,11 @@ final readonly class QueueWorkerDockerService implements DockerServiceModule
     {
         return new DockerService(
             image: $this->getServiceImage(),
+            working_dir: '/var/www/html',
+            command: 'php artisan schedule:work',
             restart: 'unless-stopped',
-            networks: [
-                'internal',
-            ],
+            env_file: ['stack.env'],
+            networks: ['internal'],
         );
     }
 }

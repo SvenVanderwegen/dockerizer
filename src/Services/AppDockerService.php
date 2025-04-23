@@ -6,26 +6,33 @@ namespace SvenVanderwegen\Dockerizer\Services;
 
 use SvenVanderwegen\Dockerizer\Contracts\DockerServiceModule;
 
-final readonly class QueueWorkerDockerService implements DockerServiceModule
+final class AppDockerService implements DockerServiceModule
 {
-    public function __construct(
-        private AppDockerService $appDockerService,
-    ) {}
-
     public function getServiceName(): string
     {
-        return 'worker';
+        return 'app';
     }
 
     public function getServiceImage(): string
     {
-        return $this->appDockerService->getServiceImage();
+        $url = dconfig()->string('registry.url');
+        $repository = dconfig()->string('registry.repository');
+
+        if ($url !== '' && $url !== '0') {
+            return $url.'/'.$repository.':latest';
+        }
+
+        return $repository.':latest';
     }
 
     public function getService(): DockerService
     {
         return new DockerService(
             image: $this->getServiceImage(),
+            working_dir: '/var/www/html',
+            env_file: [
+                'stack.env',
+            ],
             restart: 'unless-stopped',
             networks: [
                 'internal',

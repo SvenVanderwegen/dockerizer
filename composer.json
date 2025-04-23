@@ -26,7 +26,10 @@
     "autoload": {
         "psr-4": {
             "SvenVanderwegen\\Dockerizer\\": "src/"
-        }
+        },
+        "files": [
+            "src/Support/helpers.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

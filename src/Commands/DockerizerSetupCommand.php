@@ -121,10 +121,12 @@ final class DockerizerSetupCommand extends Command
     {
         $redis = $this->confirm('Do you want to use Redis?', true);
         $worker = $this->confirm('Do you want to add a queue worker?', true);
+        $scheduler = $this->confirm('Do you want to add a scheduler container?', false);
 
         return [
             'redis' => $redis,
             'workers' => $worker,
+            'scheduler' => $scheduler,
         ];
     }
 

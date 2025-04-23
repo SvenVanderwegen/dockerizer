@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SvenVanderwegen\Dockerizer\Commands;
 
+use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Facades\File;
@@ -13,8 +14,11 @@ use SvenVanderwegen\Dockerizer\Contracts\DockerServiceModule;
 use SvenVanderwegen\Dockerizer\Enums\DatabaseOptions;
 use SvenVanderwegen\Dockerizer\Enums\GeneratedStubFiles;
 use SvenVanderwegen\Dockerizer\Exceptions\FileAlreadyExistsException;
+use SvenVanderwegen\Dockerizer\Services\AppDockerService;
+use SvenVanderwegen\Dockerizer\Services\NginxDockerService;
 use SvenVanderwegen\Dockerizer\Services\QueueWorkerDockerService;
 use SvenVanderwegen\Dockerizer\Services\RedisDockerService;
+use SvenVanderwegen\Dockerizer\Services\SchedulerDockerService;
 use Symfony\Component\Yaml\Yaml;
 
 final class DockerizerBuildCommand extends Command
@@ -22,8 +26,6 @@ final class DockerizerBuildCommand extends Command
     private const string DEFAULT_DOCKERIZER_DIR = '.dockerizer';
 
     private const string DOCKER_COMPOSE_FILENAME = 'docker-compose.yml';
-
-    private const string CONFIG_FILENAME = 'config.json';
 
     /**
      * The name and signature of the console command.
@@ -118,11 +120,9 @@ final class DockerizerBuildCommand extends Command
     private function generateDockerComposeFile(): void
     {
         $filePath = base_path(self::DOCKER_COMPOSE_FILENAME);
-        $configPath = $this->getDockerizeDirectory().'/'.self::CONFIG_FILENAME;
 
         try {
-            $config = $this->loadAndValidateConfig($configPath);
-            $services = $this->collectDockerServices($config);
+            $services = $this->collectDockerServices();
             $compose = $this->buildComposeConfiguration($services);
 
             // Use Symfony YAML to generate clean output
@@ -130,61 +130,23 @@ final class DockerizerBuildCommand extends Command
             File::put($filePath, $yamlContent);
 
             $this->line('Generated: <info>'.self::DOCKER_COMPOSE_FILENAME.'</info>');
-        } catch (FileNotFoundException) {
-            $this->error("Config file not found: {$configPath}");
         } catch (InvalidArgumentException $e) {
             $this->error("Error generating docker-compose.yml: {$e->getMessage()}");
+        } catch (Exception $e) {
+            $this->error("Error loading configuration: {$e->getMessage()}");
         }
-    }
-
-    /**
-     * @return array<string, mixed>
-     *
-     * @throws FileNotFoundException|InvalidArgumentException
-     */
-    private function loadAndValidateConfig(string $configPath): array
-    {
-        $config = File::json($configPath);
-
-        if (! is_array($config)) {
-            throw new InvalidArgumentException('Invalid configuration: Configuration must be an array');
-        }
-
-        if (! isset($config['database']) || ! is_array($config['database']) || ! isset($config['database']['type'])) {
-            throw new InvalidArgumentException("Invalid configuration: 'database.type' is missing");
-        }
-
-        if (! isset($config['services']) || ! is_array($config['services'])) {
-            throw new InvalidArgumentException("Invalid configuration: 'services' section is missing");
-        }
-
-        if (! isset($config['services']['redis'])) {
-            throw new InvalidArgumentException("Invalid configuration: 'services.redis' is missing");
-        }
-
-        if (! isset($config['services']['workers'])) {
-            throw new InvalidArgumentException("Invalid configuration: 'services.workers' is missing");
-        }
-
-        return $config;
     }
 
     /**
      * Collect Docker service classes based on configuration.
      *
-     * @param  array<string, mixed>  $config
      * @return array<class-string<DockerServiceModule>>
      */
-    private function collectDockerServices(array $config): array
+    private function collectDockerServices(): array
     {
-        $services = [];
+        $services = [AppDockerService::class, NginxDockerService::class];
 
-        $databaseConfig = $config['database'] ?? [];
-        $databaseType = '';
-
-        if (is_array($databaseConfig) && isset($databaseConfig['type']) && is_string($databaseConfig['type'])) {
-            $databaseType = $databaseConfig['type'];
-        }
+        $databaseType = dconfig()->string('database.type', '');
 
         if ($databaseType !== '') {
             $database = DatabaseOptions::from($databaseType)->getDockerService();
@@ -198,22 +160,16 @@ final class DockerizerBuildCommand extends Command
             }
         }
 
-        $servicesConfig = $config['services'] ?? [];
-
-        if (
-            is_array($servicesConfig) &&
-            isset($servicesConfig['redis']) &&
-            $servicesConfig['redis'] === true
-        ) {
+        if (dconfig()->boolean('services.redis', false)) {
             $services[] = RedisDockerService::class;
         }
 
-        if (
-            is_array($servicesConfig) &&
-            isset($servicesConfig['workers']) &&
-            $servicesConfig['workers'] === true
-        ) {
+        if (dconfig()->boolean('services.workers', false)) {
             $services[] = QueueWorkerDockerService::class;
+        }
+
+        if (dconfig()->boolean('services.scheduler', false)) {
+            $services[] = SchedulerDockerService::class;
         }
 
         /** @var array<class-string<DockerServiceModule>> $services */
