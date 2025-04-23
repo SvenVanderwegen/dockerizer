@@ -12,6 +12,10 @@ use SvenVanderwegen\Dockerizer\Enums\RegistryOptions;
 
 final class DockerizerSetupCommand extends Command
 {
+    private const string DEFAULT_DB_USERNAME = 'laravel';
+
+    private const string CONFIG_FILENAME = 'config.json';
+
     protected $signature = 'dockerizer:setup';
 
     protected $description = 'Setup Dockerizer configuration (choose container registry, repository)';
@@ -21,7 +25,13 @@ final class DockerizerSetupCommand extends Command
         $this->info('Dockerizer setup command executed.');
 
         $config = $this->collectConfiguration();
+
+        if ($config === []) {
+            return Command::FAILURE;
+        }
+
         $this->saveConfiguration($config);
+        $this->info('Configuration saved successfully!');
 
         return Command::SUCCESS;
     }
@@ -32,6 +42,29 @@ final class DockerizerSetupCommand extends Command
      * @return array<string, mixed>
      */
     private function collectConfiguration(): array
+    {
+        $registryConfig = $this->collectRegistryConfiguration();
+
+        if ($registryConfig === []) {
+            return [];
+        }
+
+        $databaseConfig = $this->collectDatabaseConfiguration();
+        $servicesConfig = $this->collectServicesConfiguration();
+
+        return [
+            'registry' => $registryConfig,
+            'database' => $databaseConfig,
+            'services' => $servicesConfig,
+        ];
+    }
+
+    /**
+     * Collect registry configuration.
+     *
+     * @return array<string, mixed>
+     */
+    private function collectRegistryConfiguration(): array
     {
         $registry = $this->choice(
             'Which container registry do you want to use?',
@@ -46,43 +79,61 @@ final class DockerizerSetupCommand extends Command
         }
 
         $repository = $this->ask('Enter your repository path (e.g., myusername/myapp)');
+        $customRegistryUrl = null;
 
         if (RegistryOptions::isCustom($registry)) {
             $customRegistryUrl = $this->ask('Enter your full registry URL (e.g., registry.example.com)');
         }
 
+        return [
+            'type' => $registry,
+            'repository' => $repository,
+            'url' => $customRegistryUrl,
+        ];
+    }
+
+    /**
+     * Collect database configuration.
+     *
+     * @return array<string, mixed>
+     */
+    private function collectDatabaseConfiguration(): array
+    {
         $database = $this->choice(
             'Which database do you want to use?',
             DatabaseOptions::choices(),
             DatabaseOptions::default()->value
         );
 
-        $redis = $this->confirm(
-            'Do you want to use Redis?',
-            true
-        );
+        return [
+            'type' => $database,
+            'username' => self::DEFAULT_DB_USERNAME,
+            'password' => Str::password(),
+        ];
+    }
 
-        $worker = $this->confirm(
-            'Do you want to add a queue worker?',
-            true
-        );
+    /**
+     * Collect services configuration.
+     *
+     * @return array<string, bool>
+     */
+    private function collectServicesConfiguration(): array
+    {
+        $redis = $this->confirm('Do you want to use Redis?', true);
+        $worker = $this->confirm('Do you want to add a queue worker?', true);
 
         return [
-            'registry' => [
-                'type' => $registry,
-                'repository' => $repository,
-                'url' => $customRegistryUrl ?? null,
-            ],
-            'database' => [
-                'type' => $database,
-                'username' => 'laravel',
-                'password' => Str::password(),
-            ],
-            'services' => [
-                'redis' => $redis,
-                'workers' => $worker,
-            ],
+            'redis' => $redis,
+            'workers' => $worker,
         ];
+    }
+
+    /**
+     * Get the configuration directory path.
+     */
+    private function getConfigPath(): string
+    {
+        return base_path(config()->string('dockerizer.directory', '.dockerizer'));
     }
 
     /**
@@ -92,10 +143,10 @@ final class DockerizerSetupCommand extends Command
      */
     private function saveConfiguration(array $config): void
     {
-        $configPath = base_path(config()->string('dockerizer.directory', '.dockerizer'));
+        $configPath = $this->getConfigPath();
 
         if (! File::exists($configPath)) {
-            File::makeDirectory($configPath);
+            File::makeDirectory($configPath, 0755, true);
         }
 
         $content = json_encode($config, JSON_PRETTY_PRINT);
@@ -107,7 +158,7 @@ final class DockerizerSetupCommand extends Command
         }
 
         File::put(
-            $configPath.'/config.json',
+            $configPath.'/'.self::CONFIG_FILENAME,
             $content
         );
     }
