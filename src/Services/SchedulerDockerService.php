@@ -22,11 +22,11 @@ final readonly class SchedulerDockerService implements DockerServiceModule
     {
         return new DockerService(
             image: $this->getServiceImage(),
-            working_dir: '/var/www/html',
             command: 'php artisan schedule:work',
             restart: 'unless-stopped',
-            env_file: ['stack.env'],
             networks: ['internal'],
+            working_dir: '/var/www/html',
+            env_file: ['stack.env'],
         );
     }
 }

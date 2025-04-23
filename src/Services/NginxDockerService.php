@@ -16,7 +16,7 @@ final class NginxDockerService implements DockerServiceModule
     public function getServiceImage(): string
     {
         $url = dconfig()->string('registry.url');
-        $repo = $this->getRepo();
+        $repo = dconfig()->string('registry.repository');
 
         return $url !== '' && $url !== '0'
             ? $url.'/'.$repo.'-nginx:latest'

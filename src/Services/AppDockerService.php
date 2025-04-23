@@ -29,13 +29,13 @@ final class AppDockerService implements DockerServiceModule
     {
         return new DockerService(
             image: $this->getServiceImage(),
-            working_dir: '/var/www/html',
-            env_file: [
-                'stack.env',
-            ],
             restart: 'unless-stopped',
             networks: [
                 'internal',
+            ],
+            working_dir: '/var/www/html',
+            env_file: [
+                'stack.env',
             ],
         );
     }
