@@ -30,7 +30,7 @@ final readonly class DockerService
     /**
      * Convert the Docker service to an array.
      *
-     * @return array<string, mixed>
+     * @return array<string, array<string>|string|null>
      */
     public function toArray(): array
     {

@@ -99,7 +99,11 @@ final class DockerizerBuildCommand extends Command
 
         $services = [];
 
-        $services[] = DatabaseOptions::from($config['database']['type'])->getDockerService();
+        $database = DatabaseOptions::from($config['database']['type'])->getDockerService();
+
+        if ($database) {
+            $services[] = $database;
+        }
 
         if ($config['services']['redis']) {
             $services[] = RedisDockerService::class;
@@ -109,26 +113,34 @@ final class DockerizerBuildCommand extends Command
             $services[] = QueueWorkerDockerService::class;
         }
 
-        $compose = [];
+        $compose = [
+            'services' => [],
+        ];
 
         foreach ($services as $service) {
-            /* @var DockerServiceModule $serviceInstance */
+            if (!is_subclass_of($service, DockerServiceModule::class)) {
+                throw new \InvalidArgumentException(
+                    sprintf('Service %s must implement %s', $service, DockerServiceModule::class)
+                );
+            }
+
             $serviceInstance = new $service();
             $compose['services'][$serviceInstance->getServiceName()] = $serviceInstance->getService()->toArray();
         }
 
-        // Iterate through the services and compile networks and volumes
+        /** @var array<string> $networks */
         $networks = [];
+        /** @var array<string> $volumes */
         $volumes = [];
 
         foreach ($compose['services'] as $service) {
-            if (isset($service['networks'])) {
+            if (isset($service['networks']) && is_array($service['networks'])) {
                 foreach ($service['networks'] as $network) {
                     $networks[$network] = [];
                 }
             }
 
-            if (isset($service['volumes'])) {
+            if (isset($service['volumes']) && is_array($service['volumes'])) {
                 foreach ($service['volumes'] as $volume) {
                     // Split the volume name if it contains a colon
                     if (str_contains((string) $volume, ':')) {
