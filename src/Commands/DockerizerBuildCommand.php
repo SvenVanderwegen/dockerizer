@@ -62,11 +62,9 @@ final class DockerizerBuildCommand extends Command
      */
     private function generateStubFiles(): void
     {
-        $generator = new GenerateFileFromStubAction();
-
         foreach (GeneratedStubFiles::cases() as $file) {
             try {
-                $generator->handle(
+                (new GenerateFileFromStubAction)->handle(
                     path: $this->getPath($file->getDestinationPath()),
                     stubPath: $file->getStubFilePath(),
                     force: $this->isForced(),
