@@ -11,7 +11,15 @@
 ------
 **Dockerizer** is a command line tool that helps you create Docker images for your PHP applications. It generates a `Dockerfile` and a `docker-compose.yml` file based on your application's configuration.
 
----
+
+## Installation
+
+You can install the package via Composer:
+
+```bash
+composer require --dev svenvanderwegen/dockerizer:dev-master --prefer-dist
+```
+
 
 ## Features & Functionality
 
