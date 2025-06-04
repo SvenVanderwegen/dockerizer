@@ -33,7 +33,7 @@ composer lint
 
 Run all tests:
 ```bash
-composer test
+XDEBUG_MODE=coverage composer test
 ```
 
 Check types:
@@ -43,5 +43,5 @@ composer test:types
 
 Unit tests:
 ```bash
-composer test:unit
+XDEBUG_MODE=coverage composer test:unit
 ```
