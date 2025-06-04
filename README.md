@@ -45,6 +45,7 @@ Dockerizer provides a streamlined workflow to containerize your PHP application 
 ### Modular Service Classes
 - Each Docker service (App, Nginx, Database, Redis, Worker, Scheduler) is encapsulated in its own class.
 - Only services enabled in your configuration are included in the generated compose file.
+- Supports MySQL and PostgreSQL database containers out of the box.
 - Easily extendable for additional services.
 
 ---

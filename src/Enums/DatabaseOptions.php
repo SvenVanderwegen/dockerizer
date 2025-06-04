@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SvenVanderwegen\Dockerizer\Enums;
 
 use SvenVanderwegen\Dockerizer\Services\MySQLDockerService;
+use SvenVanderwegen\Dockerizer\Services\PostgresDockerService;
 
 enum DatabaseOptions: string
 {
@@ -48,7 +49,7 @@ enum DatabaseOptions: string
     {
         return match ($this) {
             self::MYSQL => MySQLDockerService::class,
-            self::POSTGRESQL => null, // TODO: implement PostgreSQL docker service
+            self::POSTGRESQL => PostgresDockerService::class,
             self::SQLITE => null,
         };
     }

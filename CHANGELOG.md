@@ -6,3 +6,4 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 - Adds first version
+- Added PostgreSQL database service support
